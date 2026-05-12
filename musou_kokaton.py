@@ -76,6 +76,9 @@ class Bird(pg.sprite.Sprite):
         self.rect.center = xy
         self.speed = 10
 
+        self.state = "normal"
+        self.hyper_life = 0
+
     def change_img(self, num: int, screen: pg.Surface):
         """
         こうかとん画像を切り替え，画面に転送する
@@ -107,6 +110,11 @@ class Bird(pg.sprite.Sprite):
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.dire = tuple(sum_mv)
             self.image = self.imgs[self.dire]
+        if self.state == "hyper":
+            self.image = pg.transform.laplacian(self.image)
+            self.hyper_life -= 1
+            if self.hyper_life < 0:
+                self.state = "normal"
 
         screen.blit(self.image, self.rect)
 
@@ -239,7 +247,7 @@ class Score:
     def __init__(self):
         self.font = pg.font.Font(None, 50)
         self.color = (0, 0, 255)
-        self.value = 0
+        self.value = 200
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         self.rect = self.image.get_rect()
         self.rect.center = 100, HEIGHT-50
@@ -297,7 +305,7 @@ class Gravity(pg.sprite.Sprite):
     def __init__(self, life: int):
         super().__init__()
         self.image = pg.Surface((WIDTH, HEIGHT))
-        pg.draw.rect(self.image, (255, 255, 255), (0, 0, WIDTH, HEIGHT))
+        pg.draw.rect(self.image, (0, 0, 0), (0, 0, WIDTH, HEIGHT))
         self.image.set_alpha(150)
         self.rect = self.image.get_rect()
         self.life = life
@@ -326,6 +334,8 @@ class Life:
                 self.image,
                 (WIDTH-50-(i*50), HEIGHT-50)
             )
+
+
 
 
 def main():
@@ -364,6 +374,11 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_e and score.value >= 20:
                 score.value -= 20
                 EMP(emys, bombs, screen)
+            if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT:
+                if score.value > 100 and bird.state == "normal":
+                    bird.state = "hyper"
+                    bird.hyper_life = 500
+                    score.value -= 100
         screen.blit(bg_img, [0, 0])
 
         if tmr % 200 == 0:
@@ -397,16 +412,20 @@ def main():
 
             if bomb.state == "inactive":
                 pass
-            else:
-                bird.change_img(8, screen)  # こうかとん悲しみエフェクト
-                life.num -= 1  # ライフを1減らす
-                if life.num <= 0:  # ライフが0になったらゲームオーバー
-                    score.update(screen)
-                    life.update(screen)
-                    score.update(screen)
-                    pg.display.update()
-                    time.sleep(2)
-                    return
+            elif(bomb.state == "active"):
+                if bird.state == "hyper":
+                    exps.add(Explosion(bomb,50))
+                    score.value += 1               
+                else:
+                    bird.change_img(8, screen)  # こうかとん悲しみエフェクト
+                    life.num -= 1  # ライフを1減らす
+                    if life.num <= 0:  # ライフが0になったらゲームオーバー
+                        score.update(screen)
+                        life.update(screen)
+                        score.update(screen)
+                        pg.display.update()
+                        time.sleep(2)
+                        return
         
         for bomb in pg.sprite.groupcollide(bombs, shields, True, False).keys():
 
